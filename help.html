@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Typewriter centrado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body{
+      display: grid;
+      place-items: center;                 /* centra en ambos ejes */
+      background: url("images/bbva (3).png") no-repeat center center / cover;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      cursor: pointer;                     /* sugiere interacción táctil/click */
+      user-select: none;
+    }
+    #typewriter{
+      text-align: center;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: .2px;
+      font-size: clamp(64px, 3.5vw, 70px); /* min, preferido, max */
+      max-width: min(92vw, 1100px);
+      white-space: pre-line;               /* respeta \n */
+      text-shadow: 0 2px 12px rgba(0,0,0,.45);
+      padding: 0 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="typewriter" aria-label="Mensaje"></div>
+
+  <script>
+    (function(){
+      const NEXT_URL = "juego.html";    // <-- cámbialo si tu juego tiene otro nombre
+      const el = document.getElementById('typewriter');
+      const text = "Responde las preguntas \nsobre el Pago \nAutomatico y participa\npor el iPhone 16";
+      const delay = 32;
+
+      // Typewriter simple
+      let i = 0;
+      function type(){
+        if (i > text.length) return;
+        el.textContent = text.slice(0, i);
+        i++;
+        setTimeout(type, delay);
+      }
+      type();
+
+      // Redirección: a los 5s o al tocar/clic en cualquier parte
+      let navigated = false;
+      const go = () => {
+        if (navigated) return;
+        navigated = true;
+        window.location.href = NEXT_URL;
+      };
+
+      // Auto-redirect en 5s
+      const t = setTimeout(go, 5000);
+
+      // Tap/click en toda la pantalla
+      document.addEventListener('click', go, { once: true });
+      document.addEventListener('touchend', (e) => { e.preventDefault(); go(); }, { passive: false, once: true });
+      // Accesibilidad teclado (Enter/Espacio)
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+      });
+
+      // Si ya navegaste por toque, cancela el timeout (opcional)
+      function cancelTimer(){ try { clearTimeout(t); } catch(_){} }
+      document.addEventListener('click', cancelTimer, { once: true });
+      document.addEventListener('touchend', cancelTimer, { once: true });
+      document.addEventListener('keydown', cancelTimer, { once: true });
+    })();
+  </script>
+</body>
+</html>

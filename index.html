@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Trivia BCP - Inicio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    /* ====== Fuente personalizada (carpeta Fonts) ====== */
+    @font-face{
+      font-family: "TitularBCP";
+      src:
+        url("Fonts/titular.woff2") format("woff2"),
+        url("Fonts/titular.woff") format("woff");
+      font-display: swap;
+    }
+
+    /* Layout base */
+    html, body { margin: 0; height: 100%; }
+    body {
+      height: 100vh; /* o 100dvh */
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: url("images/fondo.png") no-repeat center center/cover;
+      overflow: hidden;
+      position: relative;
+    }
+    .container { position: relative; width: 100%; height: 100%; }
+
+    /* Elementos visuales */
+    .clickable { position: absolute; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+    .clickable:focus { outline: none; }
+    .logo { z-index: 10; pointer-events: none; } /* por defecto los logos no bloquean toques */
+
+    /* Animación de latido para logos 1 y 3 */
+    @keyframes heartbeat {
+      0%,100% { transform: translate(-50%, -50%) scale(1); }
+      25% { transform: translate(-50%, -50%) scale(1.1); }
+      50% { transform: translate(-50%, -50%) scale(0.95); }
+      75% { transform: translate(-50%, -50%) scale(1.05); }
+    }
+    .logo1 { animation: heartbeat 1.5s ease-in-out infinite; }
+
+    /* Entrada para logo2 */
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+      100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    .logo2 { animation: fadeInUp 1.2s ease-out; }
+
+    /* El 3er logo SÍ recibe clics y redirige */
+    .logo3{
+      animation: heartbeat 3s ease-in-out infinite;
+      pointer-events: auto;   /* anula el pointer-events:none de .logo */
+      cursor: pointer;
+    }
+
+    /* ====== Typewriter (arriba-izquierda) ====== */
+    .typewriter {
+      position: absolute;
+      top: 84px;
+      left: 104px;
+      z-index: 20;
+      max-width: min(92vw, 800px);
+      font-family: "TitularBCP", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.2px;
+      font-size: clamp(68px, 2.1vw, 28px);
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,.45);
+      pointer-events: none;
+      white-space: pre-line; /* respeta \n */
+    }
+    .typewriter em { font-style: italic; }
+
+    /* Cursor parpadeante (solo mientras escribe) */
+    .caret {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      transform: translateY(2px);
+      background: currentColor;
+      margin-left: 2px;
+      animation: blink 1s steps(1, end) infinite;
+    }
+    @keyframes blink {
+      0%,49% { opacity: 1; }
+      50%,100% { opacity: 0; }
+    }
+
+    /* Capa de enlace a pantalla completa (NO usada ahora) */
+    .full-tap {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: block;
+      background: transparent;
+      cursor: pointer;
+      text-indent: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Texto typewriter -->
+    <div id="typewriter" class="typewriter" aria-label="Mensaje">
+      <span class="caret" aria-hidden="true"></span>
+    </div>
+
+    <!-- Logo 1 con latido -->
+    <img
+      src="images/logobbva.png"
+      class="clickable logo logo1"
+      style="top:50%; left:50%; transform:translate(-50%,-50%);"
+      width="900"
+      alt="Logo principal"
+    >
+
+    <!-- Logo 2 con animación de entrada -->
+    <img
+      src="images/text.png"
+      class="clickable logo logo2"
+      style="top:50%; left:50%; transform:translate(-50%, -50%);"
+      width="1000"
+      alt="Texto del juego"
+    >
+
+    <!-- Logo 3: clicable -> juego.html -->
+    <img
+      id="logo3"
+      src="images/bbva (2).png"
+      class="clickable logo logo3"
+      style="top:54%; left:50%; transform:translate(-50%,-50%);"
+      width="900"
+      alt="Ir a juego"
+    >
+  </div>
+
+  <script>
+    /* Bloquear clic derecho y drag de imágenes */
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.querySelectorAll('img').forEach(imagen => {
+      imagen.addEventListener('dragstart', e => e.preventDefault());
+    });
+
+    /* ====== Typewriter SIN cursor al finalizar. Respeta <em> y \n ====== */
+    (function(){
+      const target = document.getElementById('typewriter');
+
+      // Texto con cursiva en "Avanzar" y saltos de línea
+      const fullHTML = "Pago \nautomático,\npara <em>Avanzar</em> \n con todo\nbajo control";
+
+      let i = 0;
+      let out = '';
+      const typeDelay = 48;          // velocidad de tipeo (ms)
+      const tagOpenChar = '<';
+      const tagCloseChar = '>';
+
+      function render(withCaret) {
+        target.innerHTML = withCaret
+          ? out + '<span class="caret" aria-hidden="true"></span>'
+          : out; // sin caret al terminar
+      }
+
+      function type() {
+        if (i >= fullHTML.length) {
+          // Terminado: render sin cursor
+          render(false);
+          return;
+        }
+
+        const ch = fullHTML[i];
+
+        if (ch === tagOpenChar) {
+          // Copiamos etiqueta completa de golpe (para que <em> se aplique bien)
+          const end = fullHTML.indexOf(tagCloseChar, i);
+          if (end !== -1) {
+            out += fullHTML.slice(i, end + 1);
+            i = end + 1;
+          } else {
+            out += ch; i++;
+          }
+        } else {
+          out += ch; i++;
+        }
+
+        // Mientras escribe, mostrar cursor
+        render(true);
+
+        setTimeout(type, typeDelay);
+      }
+
+      type();
+    })();
+
+    /* ====== Redirección del 3er icono a juego.html ====== */
+    (function(){
+      const goToGame = () => { window.location.href = "help.html"; };
+      const el = document.getElementById('logo3');
+      if (!el) return;
+
+      // Click/touch
+      el.addEventListener('click', goToGame);
+      el.addEventListener('touchend', (e) => { e.preventDefault(); goToGame(); }, { passive: false });
+
+      // Accesibilidad teclado (Enter/Espacio)
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToGame(); }
+      });
+    })();
+  </script>
+</body>
+</html>
+
