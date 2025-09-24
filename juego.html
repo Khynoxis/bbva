@@ -6,21 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      /* Branding y ajustes rápidos */
-      --bbva: #002e9d;           /* azul principal */
-      --bbva-dark: #001f6b;
-      --logo-top: 12%;           /* posición vertical del logo */
-      --logo-w: 520px;           /* ancho del logo */
-      --maxw: 980px;             /* ancho máx. del bloque de juego */
-      --choice-radius: 22px;     /* radios pildoras */
-      --enter-dur: .55s;         /* duración anim entrada */
-      --stagger: 110ms;          /* diferencia entre items */
+      --bbva: #002e9d;
+      --maxw: 980px;
+
+      /* Caja de la pregunta (ajustes de distancias internas) */
+      --qbox-pad-block: clamp(2px, 0.2vw, 16px);  /* arriba/abajo */
+      --qbox-pad-inline: clamp(16px, 3vw, 36px);   /* izq/der */
+      --qbox-gap: clamp(8px, 1.4vw, 16px);         /* gap interno si agregas más elementos */
+      --badge-gap: clamp(12px, 2vw, 22px);         /* espacio entre badge y qbox */
+
+      --choice-radius: 22px;
+      --enter-dur: .55s;
+      --stagger: 110ms;
     }
 
     html, body { height: 100%; margin: 0; }
     body{
       min-height: 100vh;
-      background: var(--bbva) url("images/FondoTrivia.png") no-repeat center center / cover; /* usa color + imagen si quieres */
+      background: var(--bbva) url("images/FondoTrivia.png") no-repeat center center / cover;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       color: #fff;
       overflow: hidden;
@@ -32,96 +35,114 @@
       height: 100vh;
     }
 
-    /* Logo (tamaño y posición controlables) */
-    .logo-main{
-      position: absolute;
-      top: var(--logo-top);
-      left: 50%;
-      transform: translateX(-50%);
-      width: var(--logo-w);
-      height: auto;
-      filter: drop-shadow(0 8px 28px rgba(0,0,0,.45));
-      user-select: none;
-      -webkit-user-drag: none;
-      pointer-events: none;
-      z-index: 3;
-    }
-
-    /* Contenedor del juego */
     .game{
       position: absolute;
       left: 50%;
-      top: calc(var(--logo-top) + 700px); /* debajo del logo */
+      top: 44vh;                      /* coloca tu bloque de juego donde necesites */
       transform: translateX(-50%);
       width: min(92vw, var(--maxw));
       z-index: 4;
     }
 
-    /* Caja de la pregunta (estilo mockup) */
+    /* Badge FUERA del box de pregunta */
+    .badge{
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.24);
+      font-weight: 800;
+      font-size: clamp(24px, 1.4vw, 18px);
+      letter-spacing: .2px;
+      backdrop-filter: blur(6px);
+      margin-bottom: var(--badge-gap); /* separación con la caja */
+    }
+
+    /* Caja de la pregunta: altura fija para que NO mueva las alternativas */
     .qbox{
       display: grid;
       place-items: center;
-      padding: clamp(12px, 2.2vw, 22px) clamp(16px, 3vw, 32px);
+      padding: var(--qbox-pad-block) var(--qbox-pad-inline);
       border: 8px solid #fff;
       border-radius: 26px;
       background: rgba(255,255,255,0.06);
       box-shadow: 0 12px 36px rgba(0,0,0,.25) inset;
       margin-bottom: 28px;
+
+      /* Altura fija responsiva (sube si tienes textos más largos) */
+      height: clamp(140px, 16vh, 240px);
     }
     .qtext{
-      font-size: clamp(48px, 2.2vw, 30px);
-      line-height: 1.25;
+      font-size: clamp(30px, 3.2vw, 48px);
+      line-height: 1.22;
       font-weight: 800;
       text-align: center;
       text-shadow: 0 2px 12px rgba(0,0,0,.35);
-      white-space: pre-line; /* por si luego quieres \n */
-      min-height: 3.2em;     /* estabiliza el alto durante typewriter */
+      white-space: pre-line;
+    }
+
+    /* Envoltura de alternativas (para centrar líneas y grid juntos) */
+    .choices-wrap{
+      position: relative;
+      width: 100%;
     }
 
     /* Grid 2 columnas de alternativas */
     .choices{
-      position: relative;  /* para las líneas decorativas */
+      position: relative;
       display: grid;
       grid-template-columns: repeat(2, minmax(260px, 1fr));
-      gap: 22px 28px;      /* fila, columna */
-      padding: 6px 0;
+      gap: 22px 28px;
+      padding: 12px 0;
     }
 
-    /* Líneas decorativas detrás de cada fila (como el mockup) */
-    .choices::before,
-    .choices::after{
-      content: "";
+    /* Líneas DOM por fila (centradas, aparecen con animación) */
+    .rowline{
       position: absolute;
-      left: -8vw; right: -8vw;          /* sobresale de los botones */
+      left: 50%;
+      transform: translateX(-50%) scaleX(0.9);
+      width: 100%;
       height: 18px;
       background: #fff;
       border-radius: 999px;
-      z-index: 0;                       /* detrás de las pildoras */
-      opacity: 1;
+      z-index: 0;
+      opacity: 0;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.15));
+      animation: lineIn var(--enter-dur) ease-out forwards;
     }
-    /* 2 filas: línea al centro de cada fila */
-    .choices::before{ top: calc(25% + 6px); transform: translateY(-50%); }
-    .choices::after { top: calc(75% - 6px); transform: translateY(-50%); }
+    .rowline.r1{ top: 25%; }
+    .rowline.r2{ top: 75%; }
+
+    /* Una sola fila (2 opciones) -> una sola línea centrada */
+    .choices-wrap.one-row .rowline.r1{ top: 50%; }
+    .choices-wrap.one-row .rowline.r2{ display: none; }
+
+    @keyframes lineIn{
+      from{ opacity: 0; transform: translateX(-50%) scaleX(0.85); }
+      to  { opacity: 1; transform: translateX(-50%) scaleX(1); }
+    }
 
     /* Píldoras */
     .choice{
       position: relative;
-      z-index: 1;                       /* por encima de las líneas */
+      z-index: 1; /* sobre las líneas */
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 18px 18px;
       border-radius: var(--choice-radius);
-      background: #fff;                 /* fondo blanco */
-      color: #0a2430;                   /* texto oscuro por defecto */
+      background: #fff;
+      color: #001391;
       border: 1.2px solid rgba(0,0,0,0.08);
       box-shadow: 0 12px 28px rgba(0,0,0,.20);
       cursor: pointer;
       user-select: none;
-      transition: transform .12s ease, background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
-      font-size: clamp(36px, 1.7vw, 22px);
-      opacity: 0;                       /* animación de entrada */
-      transform: translateY(8px);       /* animación de entrada */
+      transition: transform .12s ease, background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease;
+      font-size: clamp(28px, 1.7vw, 36px);
+      opacity: 0;
+      transform: translateY(8px);
       animation: enter var(--enter-dur) ease-out forwards;
     }
     @keyframes enter { to { opacity: 1; transform: translateY(0); } }
@@ -135,24 +156,18 @@
     .label{
       font-weight: 900;
       min-width: 38px;
-      height: 38px;
+      height: 48px;
       border-radius: 12px;
       display: inline-grid;
       place-items: center;
-      background: rgba(0,0,0,.08);
-      border: 1px solid rgba(0,0,0,.10);
-      font-size: 15px;
-      color: #0a2430;
+      font-size: 35px;
+      color: #001391;
     }
-    .text{
-      font-weight: 700;
-      letter-spacing: .2px;
-      flex: 1;
-    }
+    .text{ font-weight: 700; letter-spacing: .2px; flex: 1; }
 
     /* Feedback */
     .choice.correct{
-      background: #28a745;      /* verde */
+      background: #28a745;
       color: #fff;
       border-color: #1f8a39;
       box-shadow: 0 14px 30px rgba(40,167,69,.35);
@@ -160,34 +175,38 @@
     .choice.correct .label{ background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.28); }
 
     .choice.wrong{
-      background: #dc3545;      /* rojo */
+      background: #dc3545;
       color: #fff;
       border-color: #b62b39;
       box-shadow: 0 14px 30px rgba(220,53,69,.35);
     }
-    .choice.wrong .label{ background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.28); }
+    .choice.wrong .label{ color: #fff; }
 
     .choice.disabled{ pointer-events: none; opacity: .92; }
 
     /* Responsivo */
     @media (max-width: 720px){
-      .logo-main{ width: min(var(--logo-w), 64vw); }
-      .game{ top: calc(var(--logo-top) + 160px); }
       .choices{ grid-template-columns: 1fr 1fr; }
-      .choices::before,
-      .choices::after{ left: -5vw; right: -5vw; height: 14px; }
+      .rowline{ height: 14px; }
     }
   </style>
 </head>
 <body>
   <div class="stage">
-    <!-- Juego -->
     <div class="game" role="region" aria-live="polite">
+      <!-- BADGE fuera del box -->
+      <div id="badge" class="badge">…</div>
+
+      <!-- Caja de la pregunta -->
       <div class="qbox">
         <div id="qtext" class="qtext">…</div>
       </div>
 
-      <div id="choices" class="choices" role="listbox" aria-label="Alternativas"></div>
+      <!-- Alternativas + líneas sincronizadas -->
+      <div class="choices-wrap" id="choicesWrap">
+        <!-- Líneas se inyectan por JS -->
+        <div id="choices" class="choices" role="listbox" aria-label="Alternativas"></div>
+      </div>
     </div>
   </div>
 
@@ -196,9 +215,10 @@
   <audio id="sfxBad"  src="audio/wrong.mp3"   preload="auto"></audio>
 
   <script>
-    /************** Preguntas **************/
+    /************** Preguntas con badge **************/
     const QUESTIONS = [
       {
+        badge: "🛎 Notificaciones en todo momento",
         q: "¿Cuándo te notifica Pago Automático sobre tus pagos?",
         choices: [
           { label: "A", text: "Solo cuando ya venció la deuda", correct: false },
@@ -207,20 +227,23 @@
         ]
       },
       {
-        q: "Con Pago Automático, ¿puedo definir un monto límite de cobro?",
+        badge: "💰 Monto máximo de cobro",
+        q: "Con Pago Automático, ¿Puedo definir un monto límite de cobro?",
         choices: [
           { label: "A", text: "Verdadero", correct: true },
           { label: "B", text: "Falso", correct: false }
         ]
       },
       {
-        q: "Si un cliente ya está afiliado a Pago Automático antes del inicio de la campaña, ¿puede participar por uno de los 20 iPhones 16?",
+        badge: "📆 Fechas de vencimiento",
+        q: "¿Si un cliente ya está afiliado a Pago Automático antes del inicio de la campaña, puede participar por uno de los 20 iPhones 16?",
         choices: [
           { label: "A", text: "No", correct: false },
           { label: "B", text: "Sí", correct: true }
         ]
       },
       {
+        badge: "💳 Medios de pago",
         q: "¿Cuántas opciones de medio de pago puedes escoger con Pago Automático?",
         choices: [
           { label: "A", text: "Solo una", correct: false },
@@ -229,7 +252,7 @@
       }
     ];
 
-    /************** Utilidad: completar a 4 con "N.A" **************/
+    /************** Solo completar a 4 si hay exactamente 3 **************/
     function padChoicesToGrid(choices) {
       const out = choices.map(c => ({ ...c }));
       if (out.length === 3) {
@@ -238,20 +261,18 @@
         const missing = letters.find(L => !labels.includes(L)) || "D";
         out.push({ label: missing, text: "N.A", correct: false });
       }
-      if (out.length === 2) {
-        out.push({ label: "C", text: "N.A", correct: false });
-        out.push({ label: "D", text: "N.A", correct: false });
-      }
-      return out;
+      return out; // 2->2, 4->4
     }
 
     /************** Lógica **************/
     let idx = 0, locked = false, score = 0;
 
-    const qtextEl   = document.getElementById("qtext");
-    const choicesEl = document.getElementById("choices");
-    const sfxGood   = document.getElementById("sfxGood");
-    const sfxBad    = document.getElementById("sfxBad");
+    const badgeEl     = document.getElementById("badge");
+    const qtextEl     = document.getElementById("qtext");
+    const choicesEl   = document.getElementById("choices");
+    const choicesWrap = document.getElementById("choicesWrap");
+    const sfxGood     = document.getElementById("sfxGood");
+    const sfxBad      = document.getElementById("sfxBad");
 
     // Typewriter
     function typewriter(el, text, speed=18) {
@@ -264,13 +285,41 @@
       })();
     }
 
+    function addLines(isOneRow){
+      // Crear líneas DOM con animación de entrada
+      const l1 = document.createElement('div');
+      l1.className = 'rowline r1';
+      const l2 = document.createElement('div');
+      l2.className = 'rowline r2';
+
+      // En caso de una sola fila, añadimos igual ambas y CSS oculta la r2
+      choicesWrap.appendChild(l1);
+      choicesWrap.appendChild(l2);
+      if (isOneRow) choicesWrap.classList.add('one-row');
+      else choicesWrap.classList.remove('one-row');
+    }
+
+    function removeLinesInstant(){
+      // Eliminar al instante (sin transiciones)
+      choicesWrap.querySelectorAll('.rowline').forEach(n => n.remove());
+      choicesWrap.classList.remove('one-row');
+    }
+
     function renderQuestion(i) {
       locked = false;
       const q = QUESTIONS[i];
+
+      // Badge + pregunta
+      badgeEl.textContent = q.badge;
       typewriter(qtextEl, q.q, 18);
 
+      // Alternativas
       const padded = padChoicesToGrid(q.choices);
       choicesEl.innerHTML = "";
+
+      // Líneas nuevas (aparecen junto con opciones)
+      removeLinesInstant(); // limpia por si acaso
+      addLines(padded.length === 2);
 
       padded.forEach((c, n) => {
         const btn = document.createElement("button");
@@ -305,9 +354,7 @@
         snd = sfxGood;
       } else {
         btn.classList.add("wrong");
-        // resaltar la correcta
-        const q = QUESTIONS[idx];
-        const padded = padChoicesToGrid(q.choices);
+        const padded = padChoicesToGrid(QUESTIONS[idx].choices);
         const correctIndex = padded.findIndex(c => c.correct);
         if (correctIndex >= 0) {
           all[correctIndex].classList.remove("disabled");
@@ -315,6 +362,9 @@
         }
         snd = sfxBad;
       }
+
+      // Quitar LÍNEAS AL INSTANTE al responder
+      removeLinesInstant();
 
       // Auto-avance tras sonido (o fallback)
       const ADVANCE_DELAY = 800;
@@ -330,7 +380,7 @@
             alert(`¡Listo! Puntaje: ${score} / ${QUESTIONS.length}`);
             // window.location.href = "gracias.html";
           }
-        }, 320);
+        }, 300);
       };
 
       const p = snd.play();
