@@ -9,15 +9,31 @@
       --bbva: #002e9d;
       --maxw: 980px;
 
-      /* Caja de la pregunta (ajustes de distancias internas) */
-      --qbox-pad-block: clamp(2px, 0.2vw, 16px);  /* arriba/abajo */
-      --qbox-pad-inline: clamp(16px, 3vw, 36px);   /* izq/der */
-      --qbox-gap: clamp(8px, 1.4vw, 16px);         /* gap interno si agregas más elementos */
-      --badge-gap: clamp(12px, 2vw, 22px);         /* espacio entre badge y qbox */
+      /* Caja de la pregunta (distancias) */
+      --qbox-pad-block: clamp(2px, 0.2vw, 16px);
+      --qbox-pad-inline: clamp(16px, 3vw, 36px);
+      --qbox-gap: clamp(8px, 1.4vw, 16px);
+      --badge-gap: clamp(12px, 2vw, 22px);
+
+      /* >>> Nuevo: controla ancho del box de la pregunta <<< */
+      --qbox-maxw: 760px;
 
       --choice-radius: 22px;
       --enter-dur: .55s;
       --stagger: 110ms;
+
+      /* === Línea centrada INTERNA del box === */
+      --qline-h: none;
+      --qline-color: #fff;
+      --qline-shadow: 0 4px 10px rgba(0,0,0,.15);
+      --mid-gap: 0px;         /* se actualiza por JS al ancho del texto */
+      --mid-gap-pad: 16px;
+
+      /* === Línea EXTERNA: full width y detrás del box === */
+      --outerline-h: 68px;
+      --outerline-color: #fff;
+      --outerline-shadow: 0 4px 10px rgba(0,0,0,.15);
+      --outerline-top: 0px;   /* la centra con JS al medio del qbox */
     }
 
     html, body { height: 100%; margin: 0; }
@@ -34,18 +50,32 @@
       width: 100%;
       height: 100vh;
     }
+    .stage::after{
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: var(--outerline-top);
+      transform: translate(-50%, -50%);
+      width: 100vw;                     /* borde a borde */
+      height: var(--outerline-h);
+      background: var(--outerline-color);
+      filter: drop-shadow(var(--outerline-shadow));
+      pointer-events: none;
+      z-index: 2;                       /* detrás de .game (z-index:4) */
+    }
 
     .game{
       position: absolute;
       left: 50%;
-      top: 44vh;                      /* coloca tu bloque de juego donde necesites */
+      top: 45vh;
       transform: translateX(-50%);
       width: min(92vw, var(--maxw));
       z-index: 4;
     }
 
-    /* Badge FUERA del box de pregunta */
+    /* Badge fuera del box */
     .badge{
+      margin-left: 50px;
       display: inline-flex;
       align-items: center;
       gap: 10px;
@@ -54,40 +84,65 @@
       background: rgba(0,0,0,.35);
       border: 1px solid rgba(255,255,255,.24);
       font-weight: 800;
-      font-size: clamp(24px, 1.4vw, 18px);
+      font-size: clamp(34px, 1.4vw, 18px);
       letter-spacing: .2px;
       backdrop-filter: blur(6px);
-      margin-bottom: var(--badge-gap); /* separación con la caja */
+      margin-bottom: var(--badge-gap);
     }
 
-    /* Caja de la pregunta: altura fija para que NO mueva las alternativas */
+    /* === Box de pregunta con línea centrada (interna) === */
     .qbox{
+      position: relative;
       display: grid;
       place-items: center;
       padding: var(--qbox-pad-block) var(--qbox-pad-inline);
       border: 8px solid #fff;
       border-radius: 26px;
-      background: rgba(255,255,255,0.06);
+      background-color: #001391;
       box-shadow: 0 12px 36px rgba(0,0,0,.25) inset;
       margin-bottom: 28px;
-
-      /* Altura fija responsiva (sube si tienes textos más largos) */
       height: clamp(140px, 16vh, 240px);
+      overflow: hidden;
+
+      /* >>> Nuevo: ancho reducido y centrado <<< */
+      width: min(92%, var(--qbox-maxw));
+      margin-inline: auto;
     }
+    .qbox::before{
+      content: "";
+      position: absolute;
+      left: var(--qbox-pad-inline);
+      right: var(--qbox-pad-inline);
+      top: 50%;
+      transform: translateY(-50%);
+      height: var(--qline-h);
+      border-radius: 999px;
+      filter: drop-shadow(var(--qline-shadow));
+      z-index: 0;
+      background:
+        linear-gradient(to right,
+          var(--qline-color) 0,
+          var(--qline-color) calc(50% - (var(--mid-gap) / 2 + var(--mid-gap-pad))),
+          transparent   calc(50% - (var(--mid-gap) / 2 + var(--mid-gap-pad))),
+          transparent   calc(50% + (var(--mid-gap) / 2 + var(--mid-gap-pad))),
+          var(--qline-color) calc(50% + (var(--mid-gap) / 2 + var(--mid-gap-pad))),
+          var(--qline-color) 100%);
+    }
+
     .qtext{
-      font-size: clamp(30px, 3.2vw, 48px);
+      position: relative;
+      z-index: 1;
+      font-size: clamp(40px, 3.2vw, 48px);
       line-height: 1.22;
       font-weight: 800;
       text-align: center;
       text-shadow: 0 2px 12px rgba(0,0,0,.35);
       white-space: pre-line;
+      padding: 0 4px;
     }
 
     /* Envoltura de alternativas (para centrar líneas y grid juntos) */
-    .choices-wrap{
-      position: relative;
-      width: 100%;
-    }
+    .choices-wrap{ position: relative; width: 100%; }
 
     /* Grid 2 columnas de alternativas */
     .choices{
@@ -98,12 +153,12 @@
       padding: 12px 0;
     }
 
-    /* Líneas DOM por fila (centradas, aparecen con animación) */
+    /* Líneas DOM por fila (decorativas) */
     .rowline{
       position: absolute;
-      left: 50%;
+      left: 10%;
       transform: translateX(-50%) scaleX(0.9);
-      width: 100%;
+      width: 200%;
       height: 18px;
       background: #fff;
       border-radius: 999px;
@@ -114,8 +169,6 @@
     }
     .rowline.r1{ top: 25%; }
     .rowline.r2{ top: 75%; }
-
-    /* Una sola fila (2 opciones) -> una sola línea centrada */
     .choices-wrap.one-row .rowline.r1{ top: 50%; }
     .choices-wrap.one-row .rowline.r2{ display: none; }
 
@@ -127,7 +180,7 @@
     /* Píldoras */
     .choice{
       position: relative;
-      z-index: 1; /* sobre las líneas */
+      z-index: 1;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -140,17 +193,18 @@
       cursor: pointer;
       user-select: none;
       transition: transform .12s ease, background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, opacity .2s ease;
-      font-size: clamp(28px, 1.7vw, 36px);
+      font-size: clamp(38px, 1.7vw, 36px);
       opacity: 0;
       transform: translateY(8px);
       animation: enter var(--enter-dur) ease-out forwards;
     }
+
+
     @keyframes enter { to { opacity: 1; transform: translateY(0); } }
     .choice[data-i="0"]{ animation-delay: calc(0 * var(--stagger)); }
     .choice[data-i="1"]{ animation-delay: calc(1 * var(--stagger)); }
     .choice[data-i="2"]{ animation-delay: calc(2 * var(--stagger)); }
     .choice[data-i="3"]{ animation-delay: calc(3 * var(--stagger)); }
-
     .choice:active{ transform: scale(0.98); }
 
     .label{
@@ -167,17 +221,13 @@
 
     /* Feedback */
     .choice.correct{
-      background: #28a745;
-      color: #fff;
-      border-color: #1f8a39;
+      background: #28a745; color: #fff; border-color: #1f8a39;
       box-shadow: 0 14px 30px rgba(40,167,69,.35);
     }
     .choice.correct .label{ background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.28); }
 
     .choice.wrong{
-      background: #dc3545;
-      color: #fff;
-      border-color: #b62b39;
+      background: #dc3545; color: #fff; border-color: #b62b39;
       box-shadow: 0 14px 30px rgba(220,53,69,.35);
     }
     .choice.wrong .label{ color: #fff; }
@@ -188,71 +238,64 @@
     @media (max-width: 720px){
       .choices{ grid-template-columns: 1fr 1fr; }
       .rowline{ height: 14px; }
+      /* Si quieres más compacto el box en móvil: */
+      /* :root{ --qbox-maxw: 640px; } */
     }
   </style>
 </head>
 <body>
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="game" role="region" aria-live="polite">
       <!-- BADGE fuera del box -->
       <div id="badge" class="badge">…</div>
 
-      <!-- Caja de la pregunta -->
-      <div class="qbox">
+      <!-- Caja de la pregunta (ancho reducido y centrado) -->
+      <div class="qbox" id="qbox">
         <div id="qtext" class="qtext">…</div>
       </div>
 
       <!-- Alternativas + líneas sincronizadas -->
       <div class="choices-wrap" id="choicesWrap">
-        <!-- Líneas se inyectan por JS -->
         <div id="choices" class="choices" role="listbox" aria-label="Alternativas"></div>
       </div>
     </div>
   </div>
 
   <!-- Audios -->
-  <audio id="sfxGood" src="audio/correct.mp3" preload="auto"></audio>
-  <audio id="sfxBad"  src="audio/wrong.mp3"   preload="auto"></audio>
+  <audio id="sfxGood" src="sounds/win.mp3" preload="auto"></audio>
+  <audio id="sfxBad"  src="sounds/lose.mp3" preload="auto"></audio>
 
   <script>
     /************** Preguntas con badge **************/
     const QUESTIONS = [
-      {
-        badge: "🛎 Notificaciones en todo momento",
+      { badge: "🛎 Notificaciones en todo momento",
         q: "¿Cuándo te notifica Pago Automático sobre tus pagos?",
         choices: [
           { label: "A", text: "Solo cuando ya venció la deuda", correct: false },
           { label: "B", text: "Antes, durante y después del cobro", correct: true },
           { label: "C", text: "Nunca, debes revisarlo tú", correct: false }
-        ]
-      },
-      {
-        badge: "💰 Monto máximo de cobro",
+        ]},
+      { badge: "💰 Monto máximo de cobro",
         q: "Con Pago Automático, ¿Puedo definir un monto límite de cobro?",
         choices: [
           { label: "A", text: "Verdadero", correct: true },
           { label: "B", text: "Falso", correct: false }
-        ]
-      },
-      {
-        badge: "📆 Fechas de vencimiento",
-        q: "¿Si un cliente ya está afiliado a Pago Automático antes del inicio de la campaña, puede participar por uno de los 20 iPhones 16?",
+        ]},
+      { badge: "📆 Fechas de vencimiento",
+        q: "¿Si un cliente ya está afiliado a Pago Automático antes del inicio de la campaña, puede participar por uno de \n los 20 iPhones 16?",
         choices: [
           { label: "A", text: "No", correct: false },
           { label: "B", text: "Sí", correct: true }
-        ]
-      },
-      {
-        badge: "💳 Medios de pago",
+        ]},
+      { badge: "💳 Medios de pago",
         q: "¿Cuántas opciones de medio de pago puedes escoger con Pago Automático?",
         choices: [
           { label: "A", text: "Solo una", correct: false },
           { label: "B", text: "Dos", correct: true }
-        ]
-      }
+        ]}
     ];
 
-    /************** Solo completar a 4 si hay exactamente 3 **************/
+    /************** Utilidades **************/
     function padChoicesToGrid(choices) {
       const out = choices.map(c => ({ ...c }));
       if (out.length === 3) {
@@ -261,46 +304,53 @@
         const missing = letters.find(L => !labels.includes(L)) || "D";
         out.push({ label: missing, text: "N.A", correct: false });
       }
-      return out; // 2->2, 4->4
+      return out;
     }
 
-    /************** Lógica **************/
     let idx = 0, locked = false, score = 0;
 
+    const stageEl     = document.getElementById("stage");
     const badgeEl     = document.getElementById("badge");
+    const qboxEl      = document.getElementById("qbox");
     const qtextEl     = document.getElementById("qtext");
     const choicesEl   = document.getElementById("choices");
     const choicesWrap = document.getElementById("choicesWrap");
     const sfxGood     = document.getElementById("sfxGood");
     const sfxBad      = document.getElementById("sfxBad");
 
-    // Typewriter
+    // Centra el hueco de la línea interna y posiciona la línea EXTERNA
+    function updateQLineGap(){
+      const w = qtextEl.getBoundingClientRect().width || 0;
+      qboxEl.style.setProperty('--mid-gap', w + 'px');
+    }
+    function updateOuterLine(){
+      const rQ = qboxEl.getBoundingClientRect();
+      const rS = stageEl.getBoundingClientRect();
+      const centerY = (rQ.top - rS.top) + rQ.height / 2;
+      stageEl.style.setProperty('--outerline-top', centerY + 'px');
+    }
+    window.addEventListener('resize', () => { updateQLineGap(); updateOuterLine(); });
+
+    // Typewriter (actualiza hueco y línea exterior mientras escribe)
     function typewriter(el, text, speed=18) {
       el.textContent = "";
       let i = 0;
       (function step(){
-        if (i > text.length) return;
+        if (i > text.length) { updateQLineGap(); updateOuterLine(); return; }
         el.textContent = text.slice(0, i++);
+        updateQLineGap();
+        updateOuterLine();
         setTimeout(step, speed);
       })();
     }
 
     function addLines(isOneRow){
-      // Crear líneas DOM con animación de entrada
-      const l1 = document.createElement('div');
-      l1.className = 'rowline r1';
-      const l2 = document.createElement('div');
-      l2.className = 'rowline r2';
-
-      // En caso de una sola fila, añadimos igual ambas y CSS oculta la r2
-      choicesWrap.appendChild(l1);
-      choicesWrap.appendChild(l2);
-      if (isOneRow) choicesWrap.classList.add('one-row');
-      else choicesWrap.classList.remove('one-row');
+      const l1 = document.createElement('div'); l1.className = 'rowline r1';
+      const l2 = document.createElement('div'); l2.className = 'rowline r2';
+      choicesWrap.appendChild(l1); choicesWrap.appendChild(l2);
+      if (isOneRow) choicesWrap.classList.add('one-row'); else choicesWrap.classList.remove('one-row');
     }
-
     function removeLinesInstant(){
-      // Eliminar al instante (sin transiciones)
       choicesWrap.querySelectorAll('.rowline').forEach(n => n.remove());
       choicesWrap.classList.remove('one-row');
     }
@@ -309,23 +359,19 @@
       locked = false;
       const q = QUESTIONS[i];
 
-      // Badge + pregunta
       badgeEl.textContent = q.badge;
       typewriter(qtextEl, q.q, 18);
 
-      // Alternativas
       const padded = padChoicesToGrid(q.choices);
       choicesEl.innerHTML = "";
-
-      // Líneas nuevas (aparecen junto con opciones)
-      removeLinesInstant(); // limpia por si acaso
+      removeLinesInstant();
       addLines(padded.length === 2);
 
       padded.forEach((c, n) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "choice";
-        btn.dataset.i = String(n); // stagger
+        btn.dataset.i = String(n);
         btn.setAttribute("role", "option");
         btn.setAttribute("aria-label", `${c.label}) ${c.text}`);
         btn.innerHTML = `
@@ -338,6 +384,9 @@
         });
         choicesEl.appendChild(btn);
       });
+
+      // asegura línea externa inicial
+      updateOuterLine();
     }
 
     function onChoice(btn, isCorrect) {
@@ -363,10 +412,9 @@
         snd = sfxBad;
       }
 
-      // Quitar LÍNEAS AL INSTANTE al responder
+      // Quitar líneas DOM al instante al responder
       removeLinesInstant();
 
-      // Auto-avance tras sonido (o fallback)
       const ADVANCE_DELAY = 800;
       let advanced = false;
       const next = () => {
@@ -377,8 +425,7 @@
             idx++;
             renderQuestion(idx);
           } else {
-            alert(`¡Listo! Puntaje: ${score} / ${QUESTIONS.length}`);
-            // window.location.href = "gracias.html";
+            window.location.href = "index.html";
           }
         }, 300);
       };
@@ -396,9 +443,7 @@
     renderQuestion(idx);
 
     // Prevenciones menores
-    document.addEventListener('dragstart', (e) => {
-      if (e.target.tagName === 'IMG') e.preventDefault();
-    });
+    document.addEventListener('dragstart', (e) => { if (e.target.tagName === 'IMG') e.preventDefault(); });
     document.addEventListener('contextmenu', e => e.preventDefault());
   </script>
 </body>
