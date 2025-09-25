@@ -45,7 +45,7 @@
 
     /* Subtítulo con animación distinta (fade-up + zoom) */
     #subtitle{
-        margin-top: 100px;
+      margin-top: 100px;
       font-weight: 600;
       line-height: 1.25;
       letter-spacing: .3px;
@@ -107,131 +107,242 @@
       } else {
         titleEl.classList.remove('caret');
         subtitleEl.classList.add('show-subtitle');
-        // Estallido automático al finalizar
-        fireConfettiTop(2800, 240);
+        // Arranque automático del confeti
+        startConfetti({ durationMs: 4500, dripHz: 14, burst: 120 });
       }
     }
     type();
 
     /* =========================
-       2) Confeti desde ARRIBA (caída LENTA)
+       2) Confeti realista desde ARRIBA, goteo continuo
        ========================= */
     const cnv = document.getElementById('confetti');
     const ctx = cnv.getContext('2d');
-    const colors = ["#FFD166","#06D6A0","#118AB2","#EF476F","#F7FFF7","#9B5DE5","#00F5D4"];
-    let w, h, particles = [], animId = null, endAt = 0;
-    let tWind = 0; // tiempo para viento sinusoidal
 
+    // Soporte HiDPI
+    let DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     function resize(){
-      w = cnv.width = window.innerWidth;
-      h = cnv.height = window.innerHeight;
+      const cssW = window.innerWidth;
+      const cssH = window.innerHeight;
+      DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+      cnv.width  = Math.floor(cssW * DPR);
+      cnv.height = Math.floor(cssH * DPR);
+      cnv.style.width  = cssW + 'px';
+      cnv.style.height = cssH + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // todas las coords en CSS px
     }
     window.addEventListener('resize', resize, {passive:true});
     resize();
 
-    function rand(min, max){ return Math.random() * (max - min) + min; }
-    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    // Paleta vibrante (con un par metálicos claros)
+    const COLORS = ["#FFD166","#06D6A0","#118AB2","#EF476F","#F7FFF7","#9B5DE5","#00F5D4","#FFE156","#FFCAD4"];
 
-    // Emisión en toda la parte superior
-    function createParticlesTop(count){
-      for (let k = 0; k < count; k++){
-        const xStart = rand(-40, w + 40); // ancho completo + margen
-        const angle = rand(Math.PI/2 - 0.55, Math.PI/2 + 0.55); // abanico hacia ABAJO (más vertical)
-        const speed = rand(1.6, 3.2);     // velocidad inicial baja
+    // Estados
+    let particles = [];
+    let animId = null;
+    let running = false;
+    let t = 0;             // tiempo acumulado para viento
+    let gust = 0;          // fuerza de ráfaga actual
+    let gustTarget = 0;    // fuerza objetivo
+    let gustPhase = 0;     // fase para variación
+
+    function rand(a,b){ return Math.random()*(b-a)+a; }
+    function rndInt(a,b){ return (Math.random()*(b-a+1)|0)+a; }
+    function lerp(a,b,t){ return a+(b-a)*t; }
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+    // Spawner: goteo desde arriba, distribuido en columnas con jitter
+    function spawnFromTop(n, layerBias=1){
+      const W = window.innerWidth;
+      for (let k=0; k<n; k++){
+        const layer = Math.random(); // 0..1 (parallax)
+        // bias: más probabilidad de capas medias para densidad agradable
+        const depth = Math.pow(layer, layerBias);
+
+        const x = rand(-40, W + 40);
+        const y = rand(-120, -20);
+
+        // Cada partícula es un "papel" con forma aleatoria
+        const shape = (Math.random()<0.7) ? 'rect' : (Math.random()<0.5 ? 'tri' : 'circ');
+
+        // Parallax: piezas grandes caen algo más rápido
+        const sizeBase = lerp(6, 14, 1 - depth);
+        const wRect = sizeBase * rand(0.9, 1.4);
+        const hRect = sizeBase * rand(1.0, 1.8);
+
+        const color = COLORS[rndInt(0, COLORS.length-1)];
+
+        // física inicial
+        const angle = rand(Math.PI/2 - 0.5, Math.PI/2 + 0.5); // hacia abajo casi vertical
+        const speed = lerp(1.1, 2.6, 1 - depth) * rand(0.85, 1.15);
+        const vx0 = Math.cos(angle) * speed;
+        const vy0 = Math.sin(angle) * speed;
+
         particles.push({
-          x: xStart,
-          y: rand(-80, -20),              // por encima del viewport
-          vx: Math.cos(angle) * speed + rand(-0.25, 0.25),
-          vy: Math.sin(angle) * speed + rand(0.05, 0.35),
-          g: rand(0.035, 0.08),           // gravedad suave -> caída lenta
-          drag: rand(0.985, 0.994),       // resistencia del aire (multiplica vel)
-          maxVy: rand(2.2, 3.4),          // límite de velocidad vertical
-          swayAmp: rand(0.25, 0.9),       // amplitud de vaivén (viento)
-          swayFreq: rand(0.8, 1.6),       // frecuencia de vaivén
-          wRect: rand(6, 14),
-          hRect: rand(8, 18),
+          x, y,
+          vx: vx0 + rand(-0.15, 0.15),
+          vy: vy0 + rand(0.02, 0.22),
+          g:  lerp(0.03, 0.085, 1 - depth),        // gravedad
+          drag: lerp(0.986, 0.994, depth),         // más drag en fondo
+          maxVy: lerp(2.0, 3.6, 1 - depth),
+          swayAmp: lerp(0.2, 1.1, 1 - depth),      // vaivén
+          swayFreq: rand(0.7, 1.8),
           rot: rand(0, Math.PI*2),
-          vr: rand(-0.18, 0.18),
-          color: colors[(Math.random()*colors.length)|0],
+          vr: rand(-0.12, 0.12),
+          flipT: rand(0, Math.PI*2),               // para flip (simulación 3D)
+          flipSpeed: rand(0.05, 0.16),
+          shade: rand(0.85, 1.08),                 // leve sombreado
+          wRect, hRect, shape, color,
           alpha: 1,
-          fade: rand(0.0015, 0.0035)      // desvanecido más lento
+          fade: rand(0.001, 0.0032)
         });
       }
     }
 
     function drawParticle(p){
       ctx.save();
-      ctx.globalAlpha = Math.max(p.alpha, 0);
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.wRect/2, -p.hRect/2, p.wRect, p.hRect);
+
+      // flip (simula giro de papel)
+      p.flipT += p.flipSpeed;
+      const flip = Math.sin(p.flipT); // -1..1
+      const flipScale = lerp(0.6, 1.0, Math.abs(flip)); // aplana cuando "gira"
+      const shade = clamp(p.shade * lerp(0.85, 1.15, (flip+1)/2), 0.7, 1.2);
+
+      ctx.globalAlpha = p.alpha;
+      // sombreado muy sutil
+      const fill = p.color;
+      // aplicar un multiplicador simple al color (sombrado) sin parsear hex: usamos globalComposite para reforzar
+      ctx.fillStyle = fill;
+
+      switch(p.shape){
+        case 'rect': {
+          ctx.scale(1, flipScale);
+          ctx.fillRect(-p.wRect/2, -p.hRect/2, p.wRect, p.hRect);
+          break;
+        }
+        case 'tri': {
+          ctx.scale(1, flipScale);
+          const w = p.wRect, h = p.hRect;
+          ctx.beginPath();
+          ctx.moveTo(0, -h/2);
+          ctx.lineTo(-w/2, h/2);
+          ctx.lineTo(w/2, h/2);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        }
+        default: { // circ
+          const r = (p.wRect + p.hRect) * 0.25;
+          ctx.scale(1, flipScale);
+          ctx.beginPath();
+          ctx.arc(0, 0, r, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+
+      // ligero glow con composite para “metalizar” algún color claro
+      if (Math.random() < 0.05){
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.08;
+        ctx.fillRect(-p.wRect/2, -p.hRect/2, p.wRect, p.hRect);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
       ctx.restore();
     }
 
     function step(){
-      const now = performance.now();
-      tWind += 0.016; // ~60fps
+      t += 0.016; // ~60 fps
 
-      ctx.clearRect(0,0,w,h);
+      // viento base ondulante
+      const baseWind = Math.sin(t * 0.6) * 0.08 + Math.sin(t * 0.13) * 0.05;
 
-      // Emite goteo mientras dure "duration"
-      if (now < endAt && particles.length < 700) {
-        createParticlesTop(10);
+      // ráfagas: variamos objetivo lentamente y lo interpolamos
+      gustPhase += 0.004;
+      if (Math.random() < 0.02) {
+        // a veces queremos una ráfaga más marcada
+        gustTarget = rand(-0.35, 0.35);
+      } else {
+        // normalmente, objetivo pequeño
+        gustTarget = Math.sin(gustPhase) * 0.18;
       }
+      gust = lerp(gust, gustTarget, 0.02);
+
+      ctx.clearRect(0,0,cnv.width/DPR,cnv.height/DPR);
 
       for (let i = particles.length - 1; i >= 0; i--){
         const p = particles[i];
 
-        // viento oscilante suave (horizontal)
-        const wind = Math.sin(tWind * p.swayFreq + i) * p.swayAmp * 0.12;
+        // viento horizontal
+        const wind = baseWind + gust;
         p.vx += wind * 0.02;
 
-        // gravedad + límite de velocidad vertical
+        // gravedad con tope
         p.vy = Math.min(p.vy + p.g, p.maxVy);
 
-        // resistencia del aire (suaviza y desacelera)
+        // resistencia del aire
         p.vx *= p.drag;
         p.vy *= p.drag;
 
-        // integrar
+        // mover
         p.x += p.vx;
         p.y += p.vy;
 
-        // rotación y desvanecido
+        // rotación suave
         p.rot += p.vr;
+
+        // desvanecido
         p.alpha -= p.fade;
 
         drawParticle(p);
 
-        // eliminar fuera de pantalla o sin alpha
-        if (p.y > h + 60 || p.x < -100 || p.x > w + 100 || p.alpha <= 0){
+        // kill offscreen
+        const W = window.innerWidth, H = window.innerHeight;
+        if (p.y > H + 80 || p.x < -120 || p.x > W + 120 || p.alpha <= 0){
           particles.splice(i, 1);
         }
       }
-      animId = requestAnimationFrame(step);
+
+      if (running || particles.length > 0) {
+        animId = requestAnimationFrame(step);
+      } else {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
     }
 
-    function fireConfettiTop(durationMs=2800, burst=200){
+    // Goteo continuo durante "durationMs" + emisión inicial "burst"
+    function startConfetti({ durationMs = 4000, dripHz = 12, burst = 120 } = {}){
       const prefersReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (prefersReduce) return;
 
-      endAt = performance.now() + durationMs;
-      createParticlesTop(burst);
+      running = true;
+      const start = performance.now();
+      const dripInterval = Math.max(40, 1000 / dripHz); // ms entre goteos
+      let nextSpawn = start;
+
+      // estallido inicial suave
+      spawnFromTop(burst, 1.4);
+
       if (!animId) animId = requestAnimationFrame(step);
 
-      // apaga animación cuando no queden partículas
-      setTimeout(() => {
-        const check = () => {
-          if (particles.length === 0){
-            cancelAnimationFrame(animId);
-            animId = null;
-          } else {
-            setTimeout(check, 220);
+      function loop(){
+        const now = performance.now();
+        if (now - start < durationMs) {
+          if (now >= nextSpawn) {
+            // spawnea pequeñas tandas (simula columnas consecutivas)
+            spawnFromTop(rndInt(6, 12), 1.2);
+            nextSpawn = now + dripInterval + rand(-40, 80);
           }
-        };
-        check();
-      }, durationMs + 300);
+          requestAnimationFrame(loop);
+        } else {
+          // terminar: dejar que se vayan las que quedan
+          running = false;
+        }
+      }
+      requestAnimationFrame(loop);
     }
 
     /* =========================
@@ -240,7 +351,7 @@
     let firstClickDone = false;
     function onFirstClick(){
       firstClickDone = true;
-      fireConfettiTop(2600, 180);
+      startConfetti({ durationMs: 3500, dripHz: 14, burst: 90 });
       // siguiente click ya navega
       document.removeEventListener('click', onFirstClick, true);
       document.removeEventListener('touchend', onFirstClick, true);
@@ -260,16 +371,15 @@
       window.location.href = NEXT_URL;
     };
 
-    // Auto-redirect en 5s (puedes subirlo a 7–8s si quieres disfrutar más el confeti lento)
-    const t = setTimeout(go, 5000);
+    // Auto-redirect en 6s (subí un poco para disfrutar el confeti lento)
+    const tAuto = setTimeout(go, 6000);
 
     // Accesibilidad teclado (Enter/Espacio):
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (!firstClickDone){
-          firstClickDone = true;
-          fireConfettiTop(2600, 180);
+          onFirstClick();
         } else {
           go();
         }
@@ -277,7 +387,7 @@
     });
 
     // Si ya navegaste, cancela el timeout
-    function cancelTimer(){ try { clearTimeout(t); } catch(_){} }
+    function cancelTimer(){ try { clearTimeout(tAuto); } catch(_){} }
     document.addEventListener('click', () => { if (navigated) cancelTimer(); }, {passive:true});
     document.addEventListener('keydown', () => { if (navigated) cancelTimer(); });
 

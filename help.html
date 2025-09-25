@@ -4,25 +4,59 @@
   <meta charset="UTF-8" />
   <title>Typewriter centrado</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Preload para evitar FOUT -->
+  <link rel="preload" href="Fonts/TiemposHeadline-Bold.otf" as="font" type="font/otf" crossorigin>
+  <link rel="preload" href="Fonts/TiemposHeadline-BoldItalic.otf" as="font" type="font/otf" crossorigin>
+
   <style>
+    /* ===== Tipografías ===== */
+    @font-face{
+      font-family: "Tiempos Headline";
+      src: url("Fonts/TiemposHeadline-Bold.otf") format("opentype");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face{
+      font-family: "Tiempos Headline";
+      src: url("Fonts/TiemposHeadline-BoldItalic.otf") format("opentype");
+      font-weight: 700;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root{
+      --font-heading: "Tiempos Headline", Georgia, "Times New Roman", serif;
+      --font-ui: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
     html, body { height: 100%; margin: 0; }
+    html{
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
     body{
       display: grid;
-      place-items: center;                 /* centra en ambos ejes */
+      place-items: center; /* centra en ambos ejes */
       background: url("images/fondohelp.png") no-repeat center center / cover;
       color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      cursor: pointer;                     /* sugiere interacción táctil/click */
+      font-family: var(--font-ui);
+      cursor: pointer;   /* sugiere interacción táctil/click */
       user-select: none;
     }
+
     #typewriter{
       text-align: center;
+      font-family: var(--font-heading);
       font-weight: 700;
+      font-style: normal;            /* cambia a italic si lo deseas */
       line-height: 1.2;
       letter-spacing: .2px;
       font-size: clamp(64px, 3.5vw, 70px); /* min, preferido, max */
       max-width: min(92vw, 1100px);
-      white-space: pre-line;               /* respeta \n */
+      white-space: pre-line;         /* respeta \n */
       text-shadow: 0 2px 12px rgba(0,0,0,.45);
       padding: 0 16px;
     }
@@ -35,7 +69,7 @@
     (function(){
       const NEXT_URL = "juego.html";    // <-- cámbialo si tu juego tiene otro nombre
       const el = document.getElementById('typewriter');
-      const text = "¡Responde nuestras preguntas de pago automático! \n Afíliate y participa por un iPhone 16";
+      const text = "¡Responde nuestras preguntas de pago automático!\nAfíliate y participa por un iPhone 16";
       const delay = 32;
 
       // Typewriter simple
