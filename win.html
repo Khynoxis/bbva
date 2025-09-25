@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ganaste – Pantalla de Felicitación</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body{
+      display: grid;
+      place-items: center;
+      background: url("images/win.png") no-repeat center center / cover;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .wrap{
+      display: grid;
+      gap: clamp(10px, 2.6vh, 28px);
+      justify-items: center;
+      padding: 0 16px;
+      text-align: center;
+      max-width: min(92vw, 1100px);
+    }
+
+    /* Título con typewriter */
+    #typewriter{
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: .4px;
+      font-size: clamp(56px, 6.4vw, 92px);
+      text-shadow: 0 2px 12px rgba(0,0,0,.45);
+      white-space: nowrap;
+      border-right: 0.14em solid rgba(255,255,255,.75);
+      overflow: hidden;
+    }
+    @keyframes caret {
+      0%, 49% { border-color: rgba(255,255,255,.75); }
+      50%, 100% { border-color: transparent; }
+    }
+    .caret { animation: caret .8s steps(1, end) infinite; }
+
+    /* Subtítulo con animación distinta (fade-up + zoom) */
+    #subtitle{
+        margin-top: 100px;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: .3px;
+      font-size: clamp(60px, 2.6vw, 34px);
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+      text-shadow: 0 2px 10px rgba(0,0,0,.35);
+      will-change: transform, opacity;
+    }
+    @keyframes fadeUpIn {
+      from { opacity: 0; transform: translateY(18px) scale(0.985); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .show-subtitle { animation: fadeUpIn .60s cubic-bezier(.22,.9,.19,1) forwards; }
+
+    /* Canvas del confeti */
+    #confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      #typewriter, .caret { animation: none !important; border-right: none !important; }
+      .show-subtitle { animation: none !important; opacity: 1 !important; transform: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <div class="wrap" aria-live="polite">
+    <div id="typewriter" aria-label="Título"> </div>
+    <div id="subtitle" aria-label="Mensaje secundario">
+      Superaste la trivia, <br> eres un verdadero conocedor del <br>Pago Automático
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const NEXT_URL = "index.html";     // cámbialo si tu juego usa otro archivo
+    const titleEl = document.getElementById('typewriter');
+    const subtitleEl = document.getElementById('subtitle');
+
+    /* =========================
+       1) Typewriter principal
+       ========================= */
+    const titleText = "¡FELICIDADES!";
+    const delay = 36; // ms por carácter
+    let i = 0;
+
+    function type(){
+      if (i <= titleText.length){
+        titleEl.textContent = titleText.slice(0, i);
+        if (i === 0) titleEl.classList.add('caret');
+        i++;
+        setTimeout(type, delay);
+      } else {
+        titleEl.classList.remove('caret');
+        subtitleEl.classList.add('show-subtitle');
+        // Estallido automático al finalizar
+        fireConfettiTop(2800, 240);
+      }
+    }
+    type();
+
+    /* =========================
+       2) Confeti desde ARRIBA (caída LENTA)
+       ========================= */
+    const cnv = document.getElementById('confetti');
+    const ctx = cnv.getContext('2d');
+    const colors = ["#FFD166","#06D6A0","#118AB2","#EF476F","#F7FFF7","#9B5DE5","#00F5D4"];
+    let w, h, particles = [], animId = null, endAt = 0;
+    let tWind = 0; // tiempo para viento sinusoidal
+
+    function resize(){
+      w = cnv.width = window.innerWidth;
+      h = cnv.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize, {passive:true});
+    resize();
+
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+    // Emisión en toda la parte superior
+    function createParticlesTop(count){
+      for (let k = 0; k < count; k++){
+        const xStart = rand(-40, w + 40); // ancho completo + margen
+        const angle = rand(Math.PI/2 - 0.55, Math.PI/2 + 0.55); // abanico hacia ABAJO (más vertical)
+        const speed = rand(1.6, 3.2);     // velocidad inicial baja
+        particles.push({
+          x: xStart,
+          y: rand(-80, -20),              // por encima del viewport
+          vx: Math.cos(angle) * speed + rand(-0.25, 0.25),
+          vy: Math.sin(angle) * speed + rand(0.05, 0.35),
+          g: rand(0.035, 0.08),           // gravedad suave -> caída lenta
+          drag: rand(0.985, 0.994),       // resistencia del aire (multiplica vel)
+          maxVy: rand(2.2, 3.4),          // límite de velocidad vertical
+          swayAmp: rand(0.25, 0.9),       // amplitud de vaivén (viento)
+          swayFreq: rand(0.8, 1.6),       // frecuencia de vaivén
+          wRect: rand(6, 14),
+          hRect: rand(8, 18),
+          rot: rand(0, Math.PI*2),
+          vr: rand(-0.18, 0.18),
+          color: colors[(Math.random()*colors.length)|0],
+          alpha: 1,
+          fade: rand(0.0015, 0.0035)      // desvanecido más lento
+        });
+      }
+    }
+
+    function drawParticle(p){
+      ctx.save();
+      ctx.globalAlpha = Math.max(p.alpha, 0);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.wRect/2, -p.hRect/2, p.wRect, p.hRect);
+      ctx.restore();
+    }
+
+    function step(){
+      const now = performance.now();
+      tWind += 0.016; // ~60fps
+
+      ctx.clearRect(0,0,w,h);
+
+      // Emite goteo mientras dure "duration"
+      if (now < endAt && particles.length < 700) {
+        createParticlesTop(10);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--){
+        const p = particles[i];
+
+        // viento oscilante suave (horizontal)
+        const wind = Math.sin(tWind * p.swayFreq + i) * p.swayAmp * 0.12;
+        p.vx += wind * 0.02;
+
+        // gravedad + límite de velocidad vertical
+        p.vy = Math.min(p.vy + p.g, p.maxVy);
+
+        // resistencia del aire (suaviza y desacelera)
+        p.vx *= p.drag;
+        p.vy *= p.drag;
+
+        // integrar
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // rotación y desvanecido
+        p.rot += p.vr;
+        p.alpha -= p.fade;
+
+        drawParticle(p);
+
+        // eliminar fuera de pantalla o sin alpha
+        if (p.y > h + 60 || p.x < -100 || p.x > w + 100 || p.alpha <= 0){
+          particles.splice(i, 1);
+        }
+      }
+      animId = requestAnimationFrame(step);
+    }
+
+    function fireConfettiTop(durationMs=2800, burst=200){
+      const prefersReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduce) return;
+
+      endAt = performance.now() + durationMs;
+      createParticlesTop(burst);
+      if (!animId) animId = requestAnimationFrame(step);
+
+      // apaga animación cuando no queden partículas
+      setTimeout(() => {
+        const check = () => {
+          if (particles.length === 0){
+            cancelAnimationFrame(animId);
+            animId = null;
+          } else {
+            setTimeout(check, 220);
+          }
+        };
+        check();
+      }, durationMs + 300);
+    }
+
+    /* =========================
+       3) Clicks: 1º celebra, 2º navega
+       ========================= */
+    let firstClickDone = false;
+    function onFirstClick(){
+      firstClickDone = true;
+      fireConfettiTop(2600, 180);
+      // siguiente click ya navega
+      document.removeEventListener('click', onFirstClick, true);
+      document.removeEventListener('touchend', onFirstClick, true);
+      document.addEventListener('click', go, { once: true, capture: true });
+      document.addEventListener('touchend', (ev) => { ev.preventDefault(); go(); }, { passive: false, once: true, capture: true });
+    }
+    document.addEventListener('click', onFirstClick, true);
+    document.addEventListener('touchend', onFirstClick, true);
+
+    /* =========================
+       4) Redirección
+       ========================= */
+    let navigated = false;
+    const go = () => {
+      if (navigated) return;
+      navigated = true;
+      window.location.href = NEXT_URL;
+    };
+
+    // Auto-redirect en 5s (puedes subirlo a 7–8s si quieres disfrutar más el confeti lento)
+    const t = setTimeout(go, 5000);
+
+    // Accesibilidad teclado (Enter/Espacio):
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!firstClickDone){
+          firstClickDone = true;
+          fireConfettiTop(2600, 180);
+        } else {
+          go();
+        }
+      }
+    });
+
+    // Si ya navegaste, cancela el timeout
+    function cancelTimer(){ try { clearTimeout(t); } catch(_){} }
+    document.addEventListener('click', () => { if (navigated) cancelTimer(); }, {passive:true});
+    document.addEventListener('keydown', () => { if (navigated) cancelTimer(); });
+
+  })();
+  </script>
+</body>
+</html>
